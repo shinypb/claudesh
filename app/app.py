@@ -7,25 +7,53 @@ import subprocess
 from anthropic import Anthropic
 # from anthropic.types import TextBlock
 
+import subprocess
+import threading
+import time
+
+import subprocess
+import threading
+
 def run_bash_code(bash_code):
     # Append 'pwd' command to fetch the current directory separately
     # Enclose the initial command(s) in curly braces to ensure they're treated as one block
     bash_code_with_cwd = f"{{ {bash_code}; }}; echo '::CWD::'$(pwd)"
-    
     process = subprocess.Popen(
-        bash_code_with_cwd, 
-        shell=True, 
-        stdout=subprocess.PIPE, 
-        stderr=subprocess.PIPE, 
+        bash_code_with_cwd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         executable='/bin/bash'
     )
-    stdout, stderr = process.communicate()
-    exit_code = process.returncode
-    
-    # Decode outputs
-    stdout_decoded = stdout.decode('utf-8')
-    stderr_decoded = stderr.decode('utf-8')
-    
+
+    def target():
+        nonlocal stdout, stderr, exit_code
+        stdout, stderr = process.communicate()
+        exit_code = process.returncode
+
+    stdout, stderr, exit_code = None, None, None
+    thread = threading.Thread(target=target)
+    thread.start()
+    thread.join(10)  # Wait for 10 seconds
+
+    if thread.is_alive():
+        process.terminate()
+        thread.join()
+        return "", "command took too long", -1, None
+
+    # Decode outputs with error handling
+    def decode_output(output):
+        try:
+            return output.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                return output.decode('iso-8859-1')
+            except UnicodeDecodeError:
+                return output.decode('utf-8', errors='replace')
+
+    stdout_decoded = decode_output(stdout)
+    stderr_decoded = decode_output(stderr)
+
     # Extract the current working directory from the output
     # Find the marker and split the stdout into actual output and cwd
     cwd_marker = "::CWD::"
@@ -63,7 +91,7 @@ class Claudesh:
     def get_next_response(self) -> str:
         print("?", file=sys.stderr)
         response = self.client.messages.create(
-            max_tokens=1024,
+            max_tokens=4096,
             messages=self.messages,
             model="claude-3-5-sonnet-20240620",
         )
@@ -108,11 +136,11 @@ def main():
 - Explain your chain of thought in a comment before your command.
 - Only respond with the very next step. With the exception of piping commands together, return only
   a single command to be run next.
-- When you have completed the task successfully, emit a final message wrapped in <claude-conclusion>
-  describing the result you achieved.
-- Your immediate next message MUST NOT contain <claude-conclusion>.
 - After each of your responses, I will respond by giving you an XML-like structure <result>
   containing <stdout>, <stderr>, and <exitcode> blocks.
+- When you have completed the task successfully, emit a final message wrapped in <claude-conclusion>
+  containing the result.
+- Your immediate next message MUST NOT contain <claude-conclusion>.
 
 Here is an example of the sort of task you will receive:
 count the number of lines in the file foo.txt that contain the word dog
