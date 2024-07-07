@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 import os
 import sys
 import subprocess
@@ -64,10 +65,11 @@ class Claudesh:
         response = self.client.messages.create(
             max_tokens=1024,
             messages=self.messages,
-            model="claude-3-opus-20240229",
+            model="claude-3-5-sonnet-20240620",
         )
         print(".", file=sys.stderr)
 
+        # TODO: check response.stop_reason and if it's max_tokens, send another message
         reply = response.content[0].text.strip()
 
         prefixed_print("CLAUDE", reply)
@@ -90,16 +92,25 @@ def main():
 - You are directly controlling a bash prompt, and will be given a task to complete. Complete the
   task using bash and other Linux commands, as if you were a human user sitting in front of a
   terminal.
+- Each of your responses should contain a single command. If solving the task requires running more
+  than one command, wait for my next message before giving me the next command.
+- Emit a single command before stopping and waiting for its output. e.g. If you first have to install
+  something before using it, that should be two separate completion API calls to your model.
 - Your output will be executed directly; any non-command output should be prefixed with a # so it is
   interpreted as a comment.
 - I repeat: anything you emit will be interpreted as a bash command, so prefix all conversational
   output with # characters so they are interpreted as comments.
 - You may look around with ls, find, pwd, cd, and any other commands you like.
-- You may install software with apt.
+- You may install software with apt get.
 - You are running as root, so be careful.
-- Explain your chain of thought in a comment before your comment.
+- Respond with a single step at a time. I will run the commands sequentially and give you each of
+  their outputs.
+- Explain your chain of thought in a comment before your command.
+- Only respond with the very next step. With the exception of piping commands together, return only
+  a single command to be run next.
 - When you have completed the task successfully, emit a final message wrapped in <claude-conclusion>
   describing the result you achieved.
+- Your immediate next message MUST NOT contain <claude-conclusion>.
 - After each of your responses, I will respond by giving you an XML-like structure <result>
   containing <stdout>, <stderr>, and <exitcode> blocks.
 
@@ -127,7 +138,10 @@ This concludes your instructions. What follows is your task, which you should be
         resp = claudesh.get_next_response()
         if "<claude-conclusion>" in resp:
             print("\nConclusion:")
-            print(resp.replace("<claude-conclusion", "").replace("</claude-conclusion>", ""))
+            result = re.search(r"<claude-conclusion>(.*?)</claude-conclusion>", resp, re.DOTALL)
+            if result:
+                print(result.group(1))
+
             exit()
 
         stdout, stderr, exitcode, cwd = run_bash_code(resp)
