@@ -34,7 +34,7 @@ def run_bash_code(bash_code):
     stdout, stderr, exit_code = None, None, None
     thread = threading.Thread(target=target)
     thread.start()
-    thread.join(10)  # Wait for 10 seconds
+    thread.join(30)  # Wait for 10 seconds
 
     if thread.is_alive():
         process.terminate()
