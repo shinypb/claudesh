@@ -1,0 +1,1 @@
+Convert the .pdf file to .html and then convert that to Markdown. Read its contents and write out a to be a pleasant, human-readable Markdown version with a filename that makes sense based on the content.
