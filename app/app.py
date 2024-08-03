@@ -14,6 +14,7 @@ import time
 import subprocess
 import threading
 
+
 def run_bash_code(bash_code):
     # Append 'pwd' command to fetch the current directory separately
     # Enclose the initial command(s) in curly braces to ensure they're treated as one block
@@ -23,7 +24,7 @@ def run_bash_code(bash_code):
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        executable='/bin/bash'
+        executable="/bin/bash",
     )
 
     def target():
@@ -44,12 +45,12 @@ def run_bash_code(bash_code):
     # Decode outputs with error handling
     def decode_output(output):
         try:
-            return output.decode('utf-8')
+            return output.decode("utf-8")
         except UnicodeDecodeError:
             try:
-                return output.decode('iso-8859-1')
+                return output.decode("iso-8859-1")
             except UnicodeDecodeError:
-                return output.decode('utf-8', errors='replace')
+                return output.decode("utf-8", errors="replace")
 
     stdout_decoded = decode_output(stdout)
     stderr_decoded = decode_output(stderr)
@@ -70,11 +71,13 @@ def run_bash_code(bash_code):
 
     return output, stderr_decoded, exit_code, current_working_directory
 
+
 def prefixed_print(prefix, message):
-    print("\n".join([
-        f"{prefix}: {line}"
-        for line in message.split("\n")
-    ]))
+    print(
+        "\n".join([f"{prefix}: {line}" for line in message.split("\n")]),
+        file=sys.stderr,
+    )
+
 
 class Claudesh:
     def __init__(self, client):
@@ -176,7 +179,9 @@ This concludes your instructions. What follows is your task, which you should be
         resp = claudesh.get_next_response()
         if "<claude-conclusion>" in resp:
             print("\nConclusion:")
-            result = re.search(r"<claude-conclusion>(.*?)</claude-conclusion>", resp, re.DOTALL)
+            result = re.search(
+                r"<claude-conclusion>(.*?)</claude-conclusion>", resp, re.DOTALL
+            )
             if result:
                 print(result.group(1))
 
@@ -186,14 +191,13 @@ This concludes your instructions. What follows is your task, which you should be
         prefixed_print("BASH", f"exit code {exitcode}, cwd {cwd}")
         prefixed_print("BASH STDOUT", stdout)
         prefixed_print("BASH STDERR", stdout)
-        
+
         if cwd is not None:
             os.chdir(cwd)
 
-
-        claudesh.append_message(f"""<result><stdout>{stdout}</stdout><stderr>{stderr}</stderr><exitcode>{exitcode}</exitcode></result>""")
-
-
+        claudesh.append_message(
+            f"""<result><stdout>{stdout}</stdout><stderr>{stderr}</stderr><exitcode>{exitcode}</exitcode></result>"""
+        )
 
 
 if __name__ == "__main__":
