@@ -4,7 +4,7 @@ import os
 import sys
 import subprocess
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APITimeoutError
 # from anthropic.types import TextBlock
 
 import subprocess
@@ -83,18 +83,28 @@ class Claudesh:
 
     def append_message(self, content):
         prefixed_print("USER", content)
-        self.messages.append({
-            "role": "user",
-            "content": content,
-        })
-
-    def get_next_response(self) -> str:
-        print("?", file=sys.stderr)
-        response = self.client.messages.create(
-            max_tokens=4096,
-            messages=self.messages,
-            model="claude-3-5-sonnet-20240620",
+        self.messages.append(
+            {
+                "role": "user",
+                "content": content,
+            }
         )
+
+    def get_next_response(self, allow_retry=True) -> str:
+        print("?", file=sys.stderr)
+
+        try:
+            response = self.client.messages.create(
+                max_tokens=4096,
+                messages=self.messages,
+                model="claude-3-5-sonnet-20240620",
+            )
+        except APITimeoutError as e:
+            if allow_retry:
+                print("timeout, retrying", file=sys.stderr)
+                return self.get_next_response(allow_retry=False)
+            raise e
+
         print(".", file=sys.stderr)
 
         # TODO: check response.stop_reason and if it's max_tokens, send another message
@@ -113,7 +123,7 @@ def main():
 
     prompt = " ".join(sys.argv[1:])
 
-    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=30)
     claudesh = Claudesh(client)
 
     claudesh.append_message(f"""
