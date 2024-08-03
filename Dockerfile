@@ -1,6 +1,9 @@
 # Use the official Python 3.11 image from the Docker Hub, based on Debian bookworm
 FROM python:3.11-bookworm
 
+# Make apt not ask for confirmation
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install any needed packages specified in requirements.txt
 # This assumes your requirements.txt is in the "app" directory.
 # Note: The actual mounting and availability of requirements.txt will happen at runtime,
