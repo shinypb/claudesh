@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt && rm requirements.txt
 
 # Copy the contents of the app and task directory in
 COPY ./app /app
-COPY ./task /task
 
 # Set the working directory in the container to /task
 WORKDIR /task

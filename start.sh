@@ -25,4 +25,4 @@ docker build -t "${IMAGE_NAME}" "${TOP_LEVEL_DIR}"
 
 # Run the Docker container
 echo "Running new container ${CONTAINER_NAME}"
-docker run --name "${CONTAINER_NAME}" --env-file .env --interactive --tty -p 8080:8080 -v "${TOP_LEVEL_DIR}/app:/app" "${IMAGE_NAME}" "$@"
+docker run --name "${CONTAINER_NAME}" --env-file .env --interactive -p 5980:5980 -v "${TOP_LEVEL_DIR}/app:/app" -v "${TOP_LEVEL_DIR}/task:/task" "${IMAGE_NAME}" "$@"
