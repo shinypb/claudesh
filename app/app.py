@@ -95,7 +95,6 @@ class Claudesh:
 
     def get_next_response(self, allow_retry=True) -> str:
         print("?", file=sys.stderr)
-
         try:
             response = self.client.messages.create(
                 max_tokens=4096,
@@ -120,11 +119,23 @@ class Claudesh:
 
 
 def main():
-    if len(sys.argv) <= 1:
-        print("usage: claudesh <prompt>", file=sys.stderr)
-        exit(1)
+    instructions_filename = os.path.join(
+        os.path.dirname(__file__), "../task/instructions.txt"
+    )
 
-    prompt = " ".join(sys.argv[1:])
+    if len(sys.argv) > 1:
+        prompt = " ".join(sys.argv[1:])
+    elif os.path.exists(instructions_filename):
+        with open(instructions_filename, "r") as fp:
+            prompt = fp.read()
+        print(f"Using instructions from {instructions_filename}", file=sys.stderr)
+    else:
+        print("usage: claudesh <prompt>", file=sys.stderr)
+        print(
+            f" tip: you can also put instructions in a text file at task/instructions.txt instead.",
+            file=sys.stderr,
+        )
+        exit(1)
 
     client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=30)
     claudesh = Claudesh(client)
